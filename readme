@@ -1,0 +1,34 @@
+hello ! this is the working branch for Mr Sujal Uniyal to contribute in SIH project titled as --
+WeatherGPT: Conversational AI for Weather Forecasting, Alerts, and Climate Information
+
+The Backend project structure look like this --
+WeatherGPT
+    |_LICENSE
+    |_.gitignore
+    |_requirements.txt
+    |_Backend/
+        |__app/
+            |__ __init__.py
+            |__main.py
+            |__api/
+                |__ __init__.py
+                |_v1/
+                    |__ __init__.py
+                    |_weather.py
+                    |_forecast.py
+                    |_hourly.py
+            |__services/
+                |_ __init__.py
+                |_ weather_service.py
+                |_ open_meteo.py
+                |_ forcast_service.py
+                |_ hourly_service.py
+            |__schemas.py
+                |__ __init__.py
+                |_ weather_schema.py
+                |_ forecast_schema.py
+                |_ hourly_schema.py
+            |__core/
+                |__ __init__.py
+                |__config.py
+                    
