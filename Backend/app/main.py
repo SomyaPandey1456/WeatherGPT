@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from Backend.app.api.v1.weather import router as weather_router
+from Backend.app.api.v1.forecast import router as forecast_router
+from Backend.app.api.v1.hourly import router as hourly_router
 from Backend.app.core.config import settings
 
 
@@ -96,5 +98,14 @@ async def root():
 
 app.include_router(
     weather_router,
+    prefix=settings.api_v1_prefix,
+)
+app.include_router(
+    forecast_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    hourly_router,
     prefix=settings.api_v1_prefix,
 )

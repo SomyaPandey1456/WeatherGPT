@@ -1,25 +1,25 @@
 from fastapi import APIRouter, Query
 
-from Backend.app.schemas.weather_schema import CurrentWeatherResponse
-from Backend.app.services.weather_service import weather
+from Backend.app.schemas.hourly_schema import HourlyForecastResponse
+from Backend.app.services.hourly_service import hourly_forecast
 
 
 router = APIRouter(
     prefix="/weather",
-    tags=["Weather"],
+    tags=["Hourly Forecast"],
 )
 
 
 @router.get(
-    "/current",
-    response_model=CurrentWeatherResponse,
+    "/hourly",
+    response_model=HourlyForecastResponse,
 )
-async def get_current_weather(
+async def get_hourly_weather(
     latitude: float = Query(..., ge=-90, le=90),
     longitude: float = Query(..., ge=-180, le=180),
     timezone: str = Query("auto"),
 ):
-    return await weather(
+    return await hourly_forecast(
         latitude=latitude,
         longitude=longitude,
         timezone=timezone,
