@@ -1,7 +1,11 @@
 import httpx
 
 
-BASE_URL = "https://api.open-meteo.com/v1/forecast"
+WEATHER_BASE_URL = "https://api.open-meteo.com/v1/forecast"
+
+AIR_QUALITY_BASE_URL = (
+    "https://air-quality-api.open-meteo.com/v1/air-quality"
+)
 
 # weather current method 
 async def get_current_weather(
@@ -27,7 +31,7 @@ async def get_current_weather(
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            BASE_URL,
+            WEATHER_BASE_URL,
             params=params,
             timeout=10.0,
         )
@@ -65,7 +69,7 @@ async def get_forecast(
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            BASE_URL,
+            WEATHER_BASE_URL,
             params=params,
             timeout=10.0,
         )
@@ -102,7 +106,42 @@ async def get_hourly_forecast(
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            BASE_URL,
+            WEATHER_BASE_URL,
+            params=params,
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+    
+ 
+# Air quality
+async def get_air_quality(
+    latitude: float,
+    longitude: float,
+    timezone: str = "auto",
+):
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": ",".join(
+            [
+                "pm10",
+                "pm2_5",
+                "carbon_monoxide",
+                "nitrogen_dioxide",
+                "sulphur_dioxide",
+                "ozone",
+            ]
+        ),
+        "timezone": timezone,
+        "forecast_days": 1,
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            AIR_QUALITY_BASE_URL,
             params=params,
             timeout=10.0,
         )

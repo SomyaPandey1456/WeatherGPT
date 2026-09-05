@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from Backend.app.api.v1.weather import router as weather_router
 from Backend.app.api.v1.forecast import router as forecast_router
 from Backend.app.api.v1.hourly import router as hourly_router
+from Backend.app.api.v1.air_quality import router as air_quality_router
 from Backend.app.core.config import settings
 
 
@@ -107,5 +108,10 @@ app.include_router(
 
 app.include_router(
     hourly_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    air_quality_router,
     prefix=settings.api_v1_prefix,
 )
