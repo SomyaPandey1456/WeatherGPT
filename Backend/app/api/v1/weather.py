@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query
-
 from Backend.app.schemas.weather_schema import CurrentWeatherResponse
 from Backend.app.services.weather_service import weather
 
@@ -19,7 +18,7 @@ async def get_current_weather(
     longitude: float = Query(..., ge=-180, le=180),
     timezone: str = Query("auto"),
 ):
-    return await weather(
+    return weather(
         latitude=latitude,
         longitude=longitude,
         timezone=timezone,
