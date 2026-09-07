@@ -1,24 +1,25 @@
 from fastapi import APIRouter, Query
-from Backend.app.schemas.air_qualiy_schema import AirQualityResponse
-from Backend.app.services.air_quality_service import air_quality
+
+from Backend.app.schemas.weather_schema.hourly_schema import HourlyForecastResponse
+from Backend.app.services.weather_feature.hourly_service import hourly_forecast
 
 
 router = APIRouter(
     prefix="/weather",
-    tags=["Air Quality"],
+    tags=["Hourly Forecast"],
 )
 
 
 @router.get(
-    "/air-quality",
-    response_model=AirQualityResponse,
+    "/hourly",
+    response_model=HourlyForecastResponse,
 )
-async def get_air_quality(
+async def get_hourly_weather(
     latitude: float = Query(..., ge=-90, le=90),
     longitude: float = Query(..., ge=-180, le=180),
     timezone: str = Query("auto"),
 ):
-    return await air_quality(
+    return await hourly_forecast(
         latitude=latitude,
         longitude=longitude,
         timezone=timezone,

@@ -1,21 +1,21 @@
 from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, BaseMessage
-from pydantic import BaseModel
+from langchain_core.messages import BaseMessage
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
+from pydantic import SecretStr
 from typing import TypedDict, Annotated
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
-from weather_tool import get_weather_now_tool 
+from Backend.app.services.chat_feature.weather_tool import get_weather_now_tool 
 from langchain_groq import ChatGroq
 import os
-import asyncio
+
 
 load_dotenv()
 
 llm = ChatGroq(
-    model_name="openai/gpt-oss-120b",
-    api_key=os.getenv('GROQ_API_KEY'),
+    model="openai/gpt-oss-120b",
+    api_key=SecretStr(os.getenv('GROQ_API_KEY') or ''),
     temperature=0.7
 )
 
@@ -60,14 +60,4 @@ initial_state = {
 async def main_func(state):
     return await chatbot.ainvoke(state)
 
-
-if __name__ == '__main__':
-
-    while(True):
-        user_input = input('Human Message : ')
-        initial_state['messages'].append(user_input)
-        if initial_state['messages'][-1] == 'exit':
-            break
-        out = asyncio.run(main_func())
-        print('AI Message : ', out['messages'][-1].content)
 

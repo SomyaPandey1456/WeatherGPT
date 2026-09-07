@@ -1,8 +1,8 @@
-from Backend.app.schemas.hourly_schema import (
+from Backend.app.schemas.weather_schema.hourly_schema import (
     HourlyForecast,
     HourlyForecastResponse,
 )
-from Backend.app.services.open_meteo import get_hourly_forecast
+from Backend.app.services.provider.open_meteo import get_hourly_forecast
 
 
 async def hourly_forecast(

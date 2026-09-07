@@ -1,4 +1,4 @@
-from Backend.app.services.open_meteo import get_current_weather
+from Backend.app.services.provider.open_meteo import get_current_weather
 
 
 async def weather(

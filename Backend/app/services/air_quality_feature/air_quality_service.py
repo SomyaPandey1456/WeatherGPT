@@ -1,11 +1,11 @@
-from Backend.app.schemas.air_qualiy_schema import (
+from Backend.app.schemas.air_quality_schema.air_qualiy_schema import (
     AirQuality,
     AirQualityResponse,
 )
 
-from Backend.app.services.open_meteo import get_air_quality
-from Backend.app.services.Indian_aqi import calculate_indian_aqi
-from Backend.app.services.air_quality_average import calculate_rolling_average
+from Backend.app.services.provider.open_meteo import get_air_quality
+from Backend.app.services.air_quality_feature.Indian_aqi import calculate_indian_aqi
+from Backend.app.services.air_quality_feature.air_quality_average import calculate_rolling_average
 
 
 async def air_quality(

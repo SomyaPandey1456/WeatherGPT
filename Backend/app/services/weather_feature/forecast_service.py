@@ -1,5 +1,5 @@
-from Backend.app.services.open_meteo import get_forecast
-from Backend.app.schemas.forecast_schema import (
+from Backend.app.services.provider.open_meteo import get_forecast
+from Backend.app.schemas.weather_schema.forecast_schema import (
     DailyForecast,
     ForecastResponse,
 )

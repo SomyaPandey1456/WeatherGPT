@@ -1,5 +1,4 @@
-from chat_bot import main_func
-import asyncio
+from Backend.app.services.chat_feature.chat_bot import main_func
 # append user query to state['messages]
 # pass the state it to trigger
 
@@ -15,9 +14,10 @@ It would be modified by trigger and an object returned. Store the object in stat
 '''
 
 
-def trigger(state):
-    if state['messages'][-1] == 'exit':
+async def trigger(state):
+    if state["messages"][-1].content == "exit":
         return
-    out = asyncio.run(main_func(state))
+
+    out = await main_func(state)
     return out
     

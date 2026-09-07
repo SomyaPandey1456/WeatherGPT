@@ -8,33 +8,39 @@ WeatherGPT
     |_requirements.txt
     |_Backend/
         |__app/
-            |__ __init__.py
             |__main.py
             |__api/
-                |__ __init__.py
                 |_v1/
-                    |__ __init__.py
                     |_ weather.py
                     |_ forecast.py
                     |_ hourly.py
                     |_ air_quality.py 
             |__services/
-                |_ __init__.py
-                |_ weather_service.py
-                |_ open_meteo.py
-                |_ forcast_service.py
-                |_ hourly_service.py
-                |_ air_quality_service.py
-                |_ air_quality_average.py
-                |_ Indian_aqi.py
-            |__schemas.py
-                |__ __init__.py
-                |_ weather_schema.py
-                |_ forecast_schema.py
-                |_ hourly_schema.py
-                |_ air_quality_schema.py
+                |_ weather_feature/
+                    |_ weather_service.py
+                    |_ forcast_service.py
+                    |_ hourly_service.py
+
+                |_ provider/
+                    |_ open_meteo.py
+
+                |_ chat_feature/
+                    |_chat_bot.py
+                    |_chat_trigger.py
+                    |_schemas.py
+                    |_weather_tool.py               
+                |_air_quality_feature/
+                    |_ air_quality_service.py
+                    |_ air_quality_average.py
+                    |_ Indian_aqi.py             
+            |__schemas/
+                |_weather_schema/
+                    |_ weather_schema.py
+                    |_ forecast_schema.py
+                    |_ hourly_schema.py
+                |_air_quality_schema/
+                    |_ air_quality_schema.py                
             |__core/
-                |__ __init__.py
                 |__config.py
                     
 
