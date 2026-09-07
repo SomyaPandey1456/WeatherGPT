@@ -14,7 +14,8 @@ WeatherGPT
                     |_ weather.py
                     |_ forecast.py
                     |_ hourly.py
-                    |_ air_quality.py 
+                    |_ air_quality.py
+                    |_ chat.py
             |__services/
                 |_ weather_feature/
                     |_ weather_service.py

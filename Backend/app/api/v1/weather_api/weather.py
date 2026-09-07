@@ -3,6 +3,7 @@ from Backend.app.schemas.weather_schema.weather_schema import CurrentWeatherResp
 from Backend.app.services.weather_feature.weather_service import weather
 
 
+
 router = APIRouter(
     prefix="/weather",
     tags=["Weather"],
@@ -18,7 +19,7 @@ async def get_current_weather(
     longitude: float = Query(..., ge=-180, le=180),
     timezone: str = Query("auto"),
 ):
-    return await weather(
+    return weather(
         latitude=latitude,
         longitude=longitude,
         timezone=timezone,
