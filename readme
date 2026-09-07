@@ -15,7 +15,6 @@ WeatherGPT
                     |_ forecast.py
                     |_ hourly.py
                     |_ air_quality.py
-                    |_ chat.py
             |__services/
                 |_ weather_feature/
                     |_ weather_service.py
@@ -24,7 +23,6 @@ WeatherGPT
 
                 |_ provider/
                     |_ open_meteo.py
-
                 |_ chat_feature/
                     |_chat_bot.py
                     |_chat_trigger.py
