@@ -14,8 +14,10 @@ WeatherGPT
                     |_ weather.py
                     |_ forecast.py
                     |_ hourly.py
-                    |_ air_quality.py 
+                    |_ air_quality.py
+                    |_ chat.py
             |__services/
+<<<<<<< HEAD
                 |_ weather_feature/
                     |_ weather_service.py
                     |_ forcast_service.py
@@ -40,6 +42,24 @@ WeatherGPT
                     |_ hourly_schema.py
                 |_air_quality_schema/
                     |_ air_quality_schema.py                
+=======
+                |_ __init__.py
+                |_ weather_service.py
+                |_ open_meteo.py
+                |_ forecast_service.py
+                |_ hourly_service.py
+                |_ air_quality_service.py
+                |_ air_quality_average.py
+                |_ Indian_aqi.py
+                |_ chat_service.py
+            |__schemas.py
+                |__ __init__.py
+                |_ weather_schema.py
+                |_ forecast_schema.py
+                |_ hourly_schema.py
+                |_ air_quality_schema.py
+                |_ chat_schema.py
+>>>>>>> 9c3cb2fbdb65d5aeee23c4f220f65cc8e53af091
             |__core/
                 |__config.py
                     
