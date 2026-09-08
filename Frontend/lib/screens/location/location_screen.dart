@@ -80,14 +80,30 @@ class _LocationScreenState extends State<LocationScreen> {
           children: [
             // Current Location Detection Button
             ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Detecting GPS location... Set to Greater Noida.')),
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Detecting device GPS location...')),
                 );
-                if (_savedLocations.isNotEmpty) {
-                  widget.onLocationSelected?.call(_savedLocations.first);
+                try {
+                  final loc = await _locationService.getCurrentLocation();
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('GPS Location detected: ${loc.name}, ${loc.state}')),
+                    );
+                    widget.onLocationSelected?.call(loc);
+                    navigator.pop();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(e.toString())),
+                    );
+                  }
                 }
               },
+
               icon: const Icon(Icons.my_location_rounded, color: AppColors.primaryBlue),
               label: Text(
                 'Use Current GPS Location',
@@ -101,6 +117,7 @@ class _LocationScreenState extends State<LocationScreen> {
                 side: BorderSide(color: context.borderBg),
               ),
             ),
+
             const SizedBox(height: 20),
 
             // Search Bar

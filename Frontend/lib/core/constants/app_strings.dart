@@ -14,19 +14,19 @@ class AppStrings {
 
   // Suggested Questions
   static const List<String> defaultSuggestions = [
-    'Will it rain today (7 Sep)?',
-    'Any alerts for my area?',
-    'Weather forecast for 7-13 Sep',
+    'Will it rain today?',
+    'Any active alerts for my area?',
+    'Weather forecast for this week',
     'Is it safe to travel today?',
     'How hot will it be today?',
-    'Monsoon forecast for North India'
+    'Monsoon and storm forecast'
   ];
 
-  // Recent Queries (Aligned with 7 September 2026)
+  // Recent Queries
   static const List<Map<String, String>> defaultRecentQueries = [
-    {'query': 'Will it rain in Greater Noida today?', 'time': '2 min ago'},
-    {'query': 'Rain alerts in Delhi NCR for 7 Sep', 'time': '1 hr ago'},
-    {'query': 'Temperature forecast for 7 Sep', 'time': 'Yesterday (6 Sep)'},
+    {'query': 'Will it rain today?', 'time': '2 min ago'},
+    {'query': 'Rain alerts for my current area', 'time': '1 hr ago'},
+    {'query': 'Temperature forecast for today', 'time': 'Yesterday'},
   ];
 
   // Quick Action Titles

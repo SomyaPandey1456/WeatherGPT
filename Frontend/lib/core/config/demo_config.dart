@@ -1,8 +1,24 @@
 class DemoConfig {
-  /// Base currentDate for WeatherGPT demo mock data
-  static final DateTime currentDate = DateTime(2026, 9, 7);
+  /// Dynamic currentDate based on device's local clock
+  static DateTime get currentDate => DateTime.now();
 
-  static String get todayStr => 'Sep 7, 2026';
-  static String get tomorrowStr => 'Sep 8, 2026';
-  static String get yesterdayStr => 'Sep 6, 2026';
+  static String get todayStr {
+    final now = DateTime.now();
+    return '${_monthName(now.month)} ${now.day}, ${now.year}';
+  }
+
+  static String get tomorrowStr {
+    final tom = DateTime.now().add(const Duration(days: 1));
+    return '${_monthName(tom.month)} ${tom.day}, ${tom.year}';
+  }
+
+  static String get yesterdayStr {
+    final yest = DateTime.now().subtract(const Duration(days: 1));
+    return '${_monthName(yest.month)} ${yest.day}, ${yest.year}';
+  }
+
+  static String _monthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[(month - 1) % 12];
+  }
 }

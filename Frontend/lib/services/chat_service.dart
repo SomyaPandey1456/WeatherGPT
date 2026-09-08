@@ -1,28 +1,46 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../models/chat.dart';
 import '../core/config/api_config.dart';
+
 import 'api_service.dart';
 import 'weather_service.dart';
 import 'alert_service.dart';
+import 'location_service.dart';
 
 class ChatService {
   final ApiService _apiService = ApiService();
   final WeatherService _weatherService = WeatherService();
   final AlertService _alertService = AlertService();
+  final LocationService _locationService = LocationService();
 
   Future<ChatMessage> sendQuery(String query) async {
     final lower = query.toLowerCase();
 
     if (!ApiConfig.useMockData) {
       try {
+        final coords = await _locationService.getDeviceCoordinates();
+        debugPrint('🤖 CHAT LOCATION CONTEXT\nlatitude = ${coords.latitude}\nlongitude = ${coords.longitude}');
+
         final responseData = await _apiService.post(ApiConfig.chatEndpoint, {
-          'query': query,
-          'location': 'Greater Noida',
+          'user': query,
+          'lat': coords.latitude,
+          'long': coords.longitude,
+          'latitude': coords.latitude,
+          'longitude': coords.longitude,
+          'city': _locationService.currentCity,
         });
-        return ChatMessage.ai(responseData['text'] ?? 'Here is your weather analysis.');
-      } catch (_) {
-        // Fall back to local mock AI intelligence
+
+        final parsedText = _parseBackendResponse(responseData);
+        return ChatMessage.ai(parsedText);
+      } catch (e) {
+        if (e is ApiException) {
+          rethrow;
+        }
+        throw ApiException('Failed to get response from WeatherGPT: $e');
       }
     }
+
 
     await Future.delayed(const Duration(milliseconds: 600));
 
@@ -73,5 +91,32 @@ class ChatService {
     return ChatMessage.ai(
       'Based on WeatherGPT intelligence for Greater Noida: Expect warm weather early today reaching up to 32°C, followed by thunderstorm activity later in the afternoon. Air quality is currently Moderate (AQI 84). Feel free to ask about specific hourly forecasts or rain warnings!',
     );
+  }
+
+  /// Parses the raw response from FastAPI backend into clean human-readable text.
+  String _parseBackendResponse(dynamic responseData) {
+    if (responseData == null) {
+      return 'No response received from WeatherGPT.';
+    }
+
+    if (responseData is String) {
+      // Check if the string itself is JSON-encoded
+      try {
+        final decoded = jsonDecode(responseData);
+        if (decoded is Map) {
+          return decoded['response'] ?? decoded['text'] ?? decoded['message'] ?? responseData;
+        }
+      } catch (_) {}
+      return responseData;
+    }
+
+    if (responseData is Map) {
+      return responseData['response'] ??
+          responseData['text'] ??
+          responseData['message'] ??
+          responseData.toString();
+    }
+
+    return responseData.toString();
   }
 }

@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/config/api_config.dart';
 import '../../core/theme/theme_context.dart';
+import '../../services/location_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -15,8 +16,11 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
-  final LatLng _defaultCenter = const LatLng(28.4744, 77.5040); // Greater Noida
+  final LocationService _locationService = LocationService();
+  LatLng _currentCenter = const LatLng(28.4744, 77.5040); // Default fallback Greater Noida
 
+  String _locationName = 'Greater Noida, Uttar Pradesh, India';
+  String _cityName = 'Greater Noida';
   String _selectedLayer = 'Rainfall';
   double _currentZoom = 11.0;
   bool _isFullscreen = false;
@@ -33,6 +37,26 @@ class _MapScreenState extends State<MapScreen> {
     'Warnings',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _initUserLocation();
+  }
+
+  Future<void> _initUserLocation() async {
+    try {
+      final loc = await _locationService.getCurrentLocation();
+      if (mounted) {
+        setState(() {
+          _currentCenter = LatLng(loc.latitude, loc.longitude);
+          _cityName = loc.name;
+          _locationName = '${loc.name}, ${loc.state}, ${loc.country}';
+        });
+        _mapController.move(_currentCenter, _currentZoom);
+      }
+    } catch (_) {}
+  }
+
   void _zoomIn() {
     setState(() {
       _currentZoom = (_currentZoom + 1.0).clamp(3.0, 18.0);
@@ -47,12 +71,28 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  void _recenterMap() {
-    setState(() {
-      _currentZoom = 11.0;
-      _mapController.move(_defaultCenter, _currentZoom);
-      _showMarkerPopup = true;
-    });
+  Future<void> _recenterMap() async {
+    try {
+      final loc = await _locationService.getCurrentLocation();
+      if (mounted) {
+        setState(() {
+          _currentCenter = LatLng(loc.latitude, loc.longitude);
+          _cityName = loc.name;
+          _locationName = '${loc.name}, ${loc.state}, ${loc.country}';
+          _currentZoom = 11.0;
+          _mapController.move(_currentCenter, _currentZoom);
+          _showMarkerPopup = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _currentZoom = 11.0;
+          _mapController.move(_currentCenter, _currentZoom);
+          _showMarkerPopup = true;
+        });
+      }
+    }
   }
 
   @override
@@ -83,7 +123,7 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _defaultCenter,
+              initialCenter: _currentCenter,
               initialZoom: _currentZoom,
               minZoom: 3.0,
               maxZoom: 18.0,
@@ -111,20 +151,12 @@ class _MapScreenState extends State<MapScreen> {
               CircleLayer(
                 circles: [
                   CircleMarker(
-                    point: const LatLng(28.4744, 77.5040), // Greater Noida rain cell
+                    point: _currentCenter,
                     radius: 12000,
                     useRadiusInMeter: true,
                     color: _getLayerColor(_selectedLayer).withValues(alpha: 0.35),
                     borderColor: _getLayerColor(_selectedLayer),
                     borderStrokeWidth: 2,
-                  ),
-                  CircleMarker(
-                    point: const LatLng(28.6139, 77.2090), // Delhi storm cell
-                    radius: 18000,
-                    useRadiusInMeter: true,
-                    color: _getLayerColor(_selectedLayer).withValues(alpha: 0.25),
-                    borderColor: _getLayerColor(_selectedLayer),
-                    borderStrokeWidth: 1.5,
                   ),
                 ],
               ),
@@ -133,7 +165,7 @@ class _MapScreenState extends State<MapScreen> {
               MarkerLayer(
                 markers: [
                   Marker(
-                    point: _defaultCenter,
+                    point: _currentCenter,
                     width: 140,
                     height: 90,
                     child: GestureDetector(
@@ -157,7 +189,7 @@ class _MapScreenState extends State<MapScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    'Greater Noida',
+                                    _cityName,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -165,7 +197,7 @@ class _MapScreenState extends State<MapScreen> {
                                     ),
                                   ),
                                   const Text(
-                                    '28°C • Thunderstorm',
+                                    'Live GPS Center',
                                     style: TextStyle(
                                       fontSize: 10,
                                       color: AppColors.primaryBlue,
@@ -252,7 +284,7 @@ class _MapScreenState extends State<MapScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Greater Noida, Uttar Pradesh, India',
+                          _locationName,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -268,6 +300,7 @@ class _MapScreenState extends State<MapScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 10),
 
                 // Layer Selector Horizontal Chips

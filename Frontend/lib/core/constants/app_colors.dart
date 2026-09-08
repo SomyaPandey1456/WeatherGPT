@@ -41,6 +41,7 @@ class AppColors {
   static const Color severeOrangeBg = Color(0xFFFFEDD5);
 
   static const Color moderateYellow = Color(0xFFD97706);
+  static const Color warningAmber = Color(0xFFD97706);
   static const Color moderateYellowBg = Color(0xFFFEF3C7);
 
   static const Color infoBlue = Color(0xFF2563EB);

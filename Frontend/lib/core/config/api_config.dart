@@ -1,10 +1,13 @@
 class ApiConfig {
-  /// Base URL for FastAPI backend. Easily updated for local development, staging, or production.
-  /// Standard Android emulator loopback is 10.0.2.2. For desktop or web, localhost can be used.
+  /// Base host URL for FastAPI server root.
+  static String serverBaseUrl = 'http://10.0.2.2:8000';
+
+  /// Base URL for FastAPI v1 API endpoints.
   static String baseUrl = 'http://10.0.2.2:8000/api/v1';
 
-  /// Toggle mock data mode when FastAPI backend is offline or during frontend standalone testing.
-  static bool useMockData = true;
+  /// Toggle mock data mode when FastAPI backend is offline.
+  /// Set to false to use real FastAPI backend.
+  static bool useMockData = false;
 
   /// Map Tile Server URL (OpenStreetMap tile template - externalized configuration)
   static String mapTileUrlTemplate = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -18,7 +21,7 @@ class ApiConfig {
   static const String mapEndpoint = '/weather/map';
   static const String alertsEndpoint = '/alerts';
   static const String climateHistoryEndpoint = '/climate/history';
-  static const String chatEndpoint = '/chat';
+  static const String chatEndpoint = '/chat_with_bot';
   static const String locationsEndpoint = '/locations';
   static const String advisoryEndpoint = '/advisory';
   static const String notificationsEndpoint = '/notifications';

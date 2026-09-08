@@ -22,7 +22,7 @@ class AppNavigationShell extends StatefulWidget {
 }
 
 class _AppNavigationShellState extends State<AppNavigationShell> {
-  int _currentIndex = 0;
+  int _currentIndex = 2; // Default launch tab is Chat Screen
   String? _pendingChatQuery;
 
   void _onTabSelected(int index) {

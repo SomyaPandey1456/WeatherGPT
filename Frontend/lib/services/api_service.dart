@@ -18,13 +18,23 @@ class ApiService {
 
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
+  String _buildUrl(String endpoint) {
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint;
+    }
+    if (endpoint == ApiConfig.chatEndpoint || endpoint == '/chat_with_bot') {
+      return '${ApiConfig.serverBaseUrl}$endpoint';
+    }
+    return '${ApiConfig.baseUrl}$endpoint';
+  }
+
   Future<dynamic> get(String endpoint, {Map<String, String>? queryParams}) async {
     if (ApiConfig.useMockData) {
       throw ApiException('Mock data mode active', statusCode: 200);
     }
 
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint').replace(queryParameters: queryParams);
+      final uri = Uri.parse(_buildUrl(endpoint)).replace(queryParameters: queryParams);
       final response = await _client
           .get(uri, headers: ApiConfig.defaultHeaders)
           .timeout(const Duration(milliseconds: ApiConfig.requestTimeoutMs));
@@ -44,7 +54,7 @@ class ApiService {
     }
 
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final uri = Uri.parse(_buildUrl(endpoint));
       final response = await _client
           .post(
             uri,
@@ -63,25 +73,39 @@ class ApiService {
   }
 
   dynamic _processResponse(http.Response response) {
-    final body = jsonDecode(response.body);
+    dynamic body;
+    try {
+      body = jsonDecode(response.body);
+    } catch (_) {
+      body = response.body;
+    }
 
     switch (response.statusCode) {
       case 200:
       case 201:
         return body;
       case 400:
-        throw ApiException(body['message'] ?? 'Bad Request', statusCode: 400);
+        final msg = (body is Map && body.containsKey('detail'))
+            ? body['detail']
+            : (body is Map && body.containsKey('message') ? body['message'] : 'Bad Request');
+        throw ApiException(msg.toString(), statusCode: 400);
       case 401:
         throw ApiException('Unauthorized access', statusCode: 401);
       case 403:
         throw ApiException('Forbidden request', statusCode: 403);
       case 404:
-        throw ApiException(body['message'] ?? 'Resource not found', statusCode: 404);
+        final msg = (body is Map && body.containsKey('detail'))
+            ? body['detail']
+            : (body is Map && body.containsKey('message') ? body['message'] : 'Resource not found');
+        throw ApiException(msg.toString(), statusCode: 404);
       case 429:
         throw ApiException('Too many requests. Please wait a moment.', statusCode: 429);
       case 500:
       default:
-        throw ApiException('WeatherGPT server error (${response.statusCode})', statusCode: response.statusCode);
+        final msg = (body is Map && body.containsKey('detail'))
+            ? body['detail']
+            : 'WeatherGPT server error (${response.statusCode})';
+        throw ApiException(msg.toString(), statusCode: response.statusCode);
     }
   }
 }

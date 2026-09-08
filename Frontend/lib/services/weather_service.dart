@@ -5,18 +5,39 @@ import '../core/config/api_config.dart';
 import '../core/config/demo_config.dart';
 import 'api_service.dart';
 
+import 'location_service.dart';
+
 class WeatherService {
   final ApiService _apiService = ApiService();
+  final LocationService _locationService = LocationService();
 
-  Future<CurrentWeather> getCurrentWeather({String? locationId}) async {
+  Future<CurrentWeather> getCurrentWeather({String? locationId, double? latitude, double? longitude}) async {
     if (!ApiConfig.useMockData) {
       try {
-        final data = await _apiService.get(ApiConfig.currentWeatherEndpoint, queryParams: {'id': locationId ?? 'gnoida'});
+        final queryParams = <String, String>{};
+        if (locationId != null) queryParams['id'] = locationId;
+
+        if (latitude != null && longitude != null) {
+          queryParams['latitude'] = latitude.toString();
+          queryParams['longitude'] = longitude.toString();
+        } else {
+          try {
+            final coords = await _locationService.getDeviceCoordinates();
+            queryParams['latitude'] = coords.latitude.toString();
+            queryParams['longitude'] = coords.longitude.toString();
+          } catch (_) {}
+        }
+
+        final data = await _apiService.get(
+          ApiConfig.currentWeatherEndpoint,
+          queryParams: queryParams.isNotEmpty ? queryParams : null,
+        );
         return CurrentWeather.fromJson(data);
       } catch (_) {
         // Fallback to mock data if backend call fails
       }
     }
+
 
     // Realistic Mock Data for Greater Noida (Current Date: 7 September 2026)
     await Future.delayed(const Duration(milliseconds: 300));
@@ -65,84 +86,37 @@ class WeatherService {
 
   Future<List<DailyForecast>> get7DayForecast() async {
     await Future.delayed(const Duration(milliseconds: 250));
-    return const [
-      DailyForecast(
-        dayName: 'Today',
-        dateStr: 'Sep 7',
-        condition: 'Thunderstorm Expected',
-        highTempC: 32.0,
-        lowTempC: 24.0,
-        rainProbability: 75,
-        summary: 'Warm afternoon followed by afternoon thunderstorms and moderate rainfall in Greater Noida.',
-        humidityPercent: 68,
-        maxWindSpeedKmH: 24.0,
-      ),
-      DailyForecast(
-        dayName: 'Tue',
-        dateStr: 'Sep 8',
-        condition: 'Heavy Rain',
-        highTempC: 29.0,
-        lowTempC: 23.0,
-        rainProbability: 90,
-        summary: 'Widespread rain likely across NCR with occasional lightning and strong winds.',
-        humidityPercent: 82,
-        maxWindSpeedKmH: 28.0,
-      ),
-      DailyForecast(
-        dayName: 'Wed',
-        dateStr: 'Sep 9',
-        condition: 'Scattered Showers',
-        highTempC: 30.0,
-        lowTempC: 24.0,
-        rainProbability: 60,
-        summary: 'Intermittent rainfall in morning, partial clearing towards evening.',
-        humidityPercent: 75,
-        maxWindSpeedKmH: 18.0,
-      ),
-      DailyForecast(
-        dayName: 'Thu',
-        dateStr: 'Sep 10',
-        condition: 'Partly Cloudy',
-        highTempC: 33.0,
-        lowTempC: 25.0,
-        rainProbability: 20,
-        summary: 'Pleasant weather with clear sunshine during noon hours.',
-        humidityPercent: 58,
-        maxWindSpeedKmH: 12.0,
-      ),
-      DailyForecast(
-        dayName: 'Fri',
-        dateStr: 'Sep 11',
-        condition: 'Mostly Sunny',
-        highTempC: 34.0,
-        lowTempC: 26.0,
-        rainProbability: 10,
-        summary: 'Warm and humid day. Minimal chance of precipitation.',
-        humidityPercent: 55,
-        maxWindSpeedKmH: 10.0,
-      ),
-      DailyForecast(
-        dayName: 'Sat',
-        dateStr: 'Sep 12',
-        condition: 'Sunny',
-        highTempC: 35.0,
-        lowTempC: 26.0,
-        rainProbability: 5,
-        summary: 'Hot afternoon with light westerly breeze.',
-        humidityPercent: 50,
-        maxWindSpeedKmH: 11.0,
-      ),
-      DailyForecast(
-        dayName: 'Sun',
-        dateStr: 'Sep 13',
-        condition: 'Light Drizzle',
-        highTempC: 32.0,
-        lowTempC: 25.0,
-        rainProbability: 35,
-        summary: 'Overcast skies with mild drizzle in evening hours.',
-        humidityPercent: 65,
-        maxWindSpeedKmH: 15.0,
-      ),
+    final now = DateTime.now();
+    const dayAbbrevs = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    final conditions = [
+      ('Thunderstorm Expected', 32.0, 24.0, 75, 'Warm afternoon followed by afternoon thunderstorms and moderate rainfall.', 68, 24.0),
+      ('Heavy Rain', 29.0, 23.0, 90, 'Widespread rain likely across your area with occasional lightning.', 82, 28.0),
+      ('Scattered Showers', 30.0, 24.0, 60, 'Intermittent rainfall in morning, partial clearing towards evening.', 75, 18.0),
+      ('Partly Cloudy', 33.0, 25.0, 20, 'Pleasant weather with clear sunshine during noon hours.', 58, 12.0),
+      ('Mostly Sunny', 34.0, 26.0, 10, 'Warm and humid day. Minimal chance of precipitation.', 55, 10.0),
+      ('Sunny', 35.0, 26.0, 5, 'Hot afternoon with light westerly breeze.', 50, 11.0),
+      ('Light Drizzle', 32.0, 25.0, 35, 'Overcast skies with mild drizzle in evening hours.', 65, 15.0),
     ];
+
+    return List.generate(7, (i) {
+      final date = now.add(Duration(days: i));
+      final dayName = i == 0 ? 'Today' : (i == 1 ? 'Tomorrow' : dayAbbrevs[(date.weekday - 1) % 7]);
+      final dateStr = '${monthNames[(date.month - 1) % 12]} ${date.day}';
+      final c = conditions[i % conditions.length];
+
+      return DailyForecast(
+        dayName: dayName,
+        dateStr: dateStr,
+        condition: c.$1,
+        highTempC: c.$2,
+        lowTempC: c.$3,
+        rainProbability: c.$4,
+        summary: c.$5,
+        humidityPercent: c.$6,
+        maxWindSpeedKmH: c.$7,
+      );
+    });
   }
 }

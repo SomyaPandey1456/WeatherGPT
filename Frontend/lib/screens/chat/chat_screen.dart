@@ -1,11 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/theme/theme_context.dart';
 import '../../models/chat.dart';
 import '../../services/chat_service.dart';
+import '../../services/api_service.dart';
+import '../../services/risk_service.dart';
+import '../../services/location_service.dart';
 import '../../widgets/chat_bubble.dart';
 import '../../widgets/suggestion_chip.dart';
+import '../../widgets/current_risk_card.dart';
+import '../../widgets/disaster_alert_card.dart';
+import '../disaster/disaster_screen.dart';
 
 /// A single stored conversation session shown in the history sidebar.
 class _ConversationSession {
@@ -33,6 +40,9 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
+  final RiskService _riskService = RiskService();
+  final LocationService _locationService = LocationService();
+
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -40,6 +50,9 @@ class _ChatScreenState extends State<ChatScreen> {
   List<ChatMessage> _messages = [];
   bool _isTyping = false;
   bool _isListeningVoice = false;
+
+  RiskModel _currentRisk = RiskModel.defaultLow();
+  Timer? _locationTimer;
 
   // ── History sidebar state ────────────────────────────────────────────────
   final List<_ConversationSession> _history = [];
@@ -49,11 +62,42 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _startNewSession();
+    _fetchRiskAndSyncLocation();
+
+    // Periodic 60s location sync & risk check
+    _locationTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      _fetchRiskAndSyncLocation();
+    });
+
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handleUserSubmit(widget.initialQuery!);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _locationTimer?.cancel();
+    _inputController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchRiskAndSyncLocation() async {
+    try {
+      final coords = await _locationService.getDeviceCoordinates();
+      await _locationService.syncLocationWithBackend();
+      final risk = await _riskService.getCurrentRisk(
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      );
+      if (mounted) {
+        setState(() {
+          _currentRisk = risk;
+        });
+      }
+    } catch (_) {}
   }
 
   /// Create a fresh in-memory session.
@@ -131,10 +175,11 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final errorMsg = (e is ApiException)
+            ? 'WeatherGPT Server: ${e.message}'
+            : 'I experienced a connection issue reaching WeatherGPT servers. Please try asking again.';
         setState(() {
-          _messages.add(ChatMessage.ai(
-            'I experienced a connection issue reaching WeatherGPT servers. Please try asking again.',
-          ));
+          _messages.add(ChatMessage.ai(errorMsg));
           _isTyping = false;
         });
         _scrollToBottom();
@@ -173,13 +218,6 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _inputController.dispose();
-    _scrollController.dispose();
-    super.dispose();
   }
 
   // ── History Drawer ───────────────────────────────────────────────────────
@@ -359,6 +397,57 @@ class _ChatScreenState extends State<ChatScreen> {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 
+  Future<void> _handleTravelSafetyQuery() async {
+    final queryText = '🚗 Is it safe to travel today?';
+    setState(() {
+      _messages.add(ChatMessage.user(queryText));
+      _isTyping = true;
+    });
+    _scrollToBottom();
+
+    try {
+      final coords = await _locationService.getDeviceCoordinates();
+      final assessment = await _riskService.evaluateTravelRisk(
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      );
+
+      final icon = assessment.riskLevel == 'HIGH' || assessment.riskLevel == 'CRITICAL'
+          ? '🔴'
+          : (assessment.riskLevel == 'MODERATE' ? '🟠' : '🟢');
+
+      final formattedText = '''
+🚗 **TRAVEL SAFETY ASSESSMENT**
+
+$icon **${assessment.travelRecommendation.toUpperCase()}**
+
+**Hazard Status**: ${assessment.hazard}
+**Reason**: ${assessment.reason}
+
+**Recommended Action**:
+${assessment.recommendedAction}
+''';
+
+      if (mounted) {
+        setState(() {
+          _messages.add(ChatMessage.ai(formattedText));
+          _isTyping = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _messages.add(ChatMessage.ai(
+            '🚗 **Travel Assessment**: Weather conditions around your area are stable. Exercise normal driving caution.',
+          ));
+          _isTyping = false;
+        });
+        _scrollToBottom();
+      }
+    }
+  }
+
   // ── Main build ───────────────────────────────────────────────────────────
 
   @override
@@ -381,16 +470,38 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: AppColors.primaryBlue, size: 22),
             const SizedBox(width: 8),
             Text(
-              'WeatherGPT Assistant',
+              'WeatherGPT',
               style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w700),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: _saveCurrentAndStartNew,
-            icon: Icon(Icons.add_comment_outlined, color: context.textPrimary),
-            tooltip: 'New Chat',
+          // 🆘 HELP Button replacing New Chat
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DisasterScreen()),
+                );
+              },
+              icon: const Text('🆘', style: TextStyle(fontSize: 14)),
+              label: const Text(
+                'HELP',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.criticalRed,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                elevation: 0,
+              ),
+            ),
           ),
           IconButton(
             onPressed: () {
@@ -426,6 +537,21 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          // Current Risk Card
+          CurrentRiskCardWidget(risk: _currentRisk),
+
+          // Disaster Alert Banner (shown when risk is MODERATE/HIGH/CRITICAL)
+          if (_currentRisk.level != 'LOW')
+            DisasterAlertCardWidget(
+              risk: _currentRisk,
+              onTapAction: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DisasterScreen()),
+                );
+              },
+            ),
+
           // Voice Listening Wave Indicator Banner
           if (_isListeningVoice)
             Container(
@@ -486,7 +612,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-          // Suggested Prompts Row
+          // Suggested Prompts & Quick Actions Row
           Container(
             padding:
                 const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
@@ -494,15 +620,31 @@ class _ChatScreenState extends State<ChatScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: AppStrings.defaultSuggestions.map((suggestion) {
-                  return Padding(
+                children: [
+                  // Prominent "Is it safe to travel?" quick action button
+                  Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: SuggestionChipWidget(
-                      text: suggestion,
-                      onTap: () => _handleUserSubmit(suggestion),
+                    child: ActionChip(
+                      avatar: const Text('🚗', style: TextStyle(fontSize: 13)),
+                      label: const Text(
+                        'Is it safe to travel?',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                      backgroundColor: AppColors.primaryBlueLight,
+                      labelStyle: const TextStyle(color: AppColors.primaryBlue),
+                      onPressed: _handleTravelSafetyQuery,
                     ),
-                  );
-                }).toList(),
+                  ),
+                  ...AppStrings.defaultSuggestions.map((suggestion) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: SuggestionChipWidget(
+                        text: suggestion,
+                        onTap: () => _handleUserSubmit(suggestion),
+                      ),
+                    );
+                  }),
+                ],
               ),
             ),
           ),
