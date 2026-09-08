@@ -24,8 +24,6 @@ class ChatService {
 
         final responseData = await _apiService.post(ApiConfig.chatEndpoint, {
           'user': query,
-          'lat': coords.latitude,
-          'long': coords.longitude,
           'latitude': coords.latitude,
           'longitude': coords.longitude,
           'city': _locationService.currentCity,

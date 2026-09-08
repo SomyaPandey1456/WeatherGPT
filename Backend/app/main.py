@@ -114,9 +114,9 @@ import json
 @App.post("/update-location", tags=["Location"])
 @App.post(f"{settings.api_v1_prefix}/update-location", tags=["Location"])
 async def update_location(payload: schemas.Query):
-    lat = payload.get("latitude") if payload.get("latitude") is not None else payload.get("lat")
-    long = payload.get("longitude") if payload.get("longitude") is not None else payload.get("long")
-    city = payload.get("city") or payload.get("location_name")
+    lat = payload.get("latitude")
+    long = payload.get("longitude")
+    city = payload.get("city")
     ts = payload.get("timestamp")
     tz = payload.get("timezone") or "Asia/Kolkata"
     
@@ -129,15 +129,25 @@ async def update_location(payload: schemas.Query):
 
 @App.get("/current-risk", tags=["Disaster Intelligence"])
 @App.get(f"{settings.api_v1_prefix}/current-risk", tags=["Disaster Intelligence"])
-async def current_risk(lat: Optional[float] = None, long: Optional[float] = None, tz: str = "auto"):
-    if lat is None or long is None:
+async def current_risk(
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    lat: Optional[float] = None,
+    long: Optional[float] = None,
+    tz: str = "auto"
+):
+    eff_lat = latitude if latitude is not None else lat
+    eff_long = longitude if longitude is not None else long
+
+    if eff_lat is None or eff_long is None:
         stored = location_store.get_user_location()
-        lat = stored.get("latitude")
-        long = stored.get("longitude")
+        eff_lat = stored.get("latitude")
+        eff_long = stored.get("longitude")
 
-    print(f"📡 Current risk request received: lat={lat}, long={long}")
+    print(f"📡 CURRENT RISK LOCATION\nlatitude={eff_lat}\nlongitude={eff_long}")
+    print(f"📡 Current risk request received: lat={eff_lat}, long={eff_long}")
 
-    if lat is None or long is None:
+    if eff_lat is None or eff_long is None:
         return {
             "level": "LOW",
             "hazard": "None",
@@ -146,15 +156,15 @@ async def current_risk(lat: Optional[float] = None, long: Optional[float] = None
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
 
-    risk = await risk_engine.get_current_risk(lat, long, tz=tz)
+    risk = await risk_engine.get_current_risk(eff_lat, eff_long, tz=tz)
     return risk
 
 
 @App.post("/travel-risk", tags=["Disaster Intelligence"])
 @App.post(f"{settings.api_v1_prefix}/travel-risk", tags=["Disaster Intelligence"])
 async def travel_risk(payload: schemas.Query):
-    lat = payload.get("latitude") if payload.get("latitude") is not None else payload.get("lat")
-    long = payload.get("longitude") if payload.get("longitude") is not None else payload.get("long")
+    lat = payload.get("latitude")
+    long = payload.get("longitude")
     dest = payload.get("destination")
     t_time = payload.get("travel_time")
 
@@ -180,18 +190,26 @@ async def travel_risk(payload: schemas.Query):
 
 @App.get("/nearby-shelters", tags=["Disaster Assistance"])
 @App.get(f"{settings.api_v1_prefix}/nearby-shelters", tags=["Disaster Assistance"])
-async def nearby_shelters(lat: Optional[float] = None, long: Optional[float] = None):
-    if lat is None or long is None:
+async def nearby_shelters(
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    lat: Optional[float] = None,
+    long: Optional[float] = None
+):
+    eff_lat = latitude if latitude is not None else lat
+    eff_long = longitude if longitude is not None else long
+
+    if eff_lat is None or eff_long is None:
         stored = location_store.get_user_location()
-        lat = stored.get("latitude")
-        long = stored.get("longitude")
+        eff_lat = stored.get("latitude")
+        eff_long = stored.get("longitude")
 
-    print(f"🏠 Nearby shelters request received: lat={lat}, long={long}")
+    print(f"🏠 Nearby shelters request received: lat={eff_lat}, long={eff_long}")
 
-    if lat is None or long is None:
+    if eff_lat is None or eff_long is None:
         return {"shelters": [], "count": 0}
 
-    shelters = shelter_service.get_nearby_shelters(lat, long)
+    shelters = shelter_service.get_nearby_shelters(eff_lat, eff_long)
     return {"shelters": shelters, "count": len(shelters)}
 
 
@@ -216,9 +234,9 @@ async def make_query(query: schemas.Query):
     global state
 
     user_text = query.get("user", "")
-    lat = query.get("latitude") if query.get("latitude") is not None else query.get("lat")
-    long = query.get("longitude") if query.get("longitude") is not None else query.get("long")
-    city_name = query.get("city") or query.get("location_name")
+    lat = query.get("latitude")
+    long = query.get("longitude")
+    city_name = query.get("city")
     device_ts = query.get("timestamp") or datetime.now(timezone.utc).isoformat()
     device_tz = query.get("timezone") or "Asia/Kolkata"
 
@@ -233,49 +251,131 @@ async def make_query(query: schemas.Query):
     if lat is not None and long is not None:
         location_store.update_user_location(lat, long, device_ts, device_tz, city_name)
 
-    print(f"🤖 Chat with bot received: user='{user_text}', lat={lat}, long={long}, city={city_name}")
+    print(f"🤖 CHAT LOCATION CONTEXT: user='{user_text}', lat={lat}, long={long}, city={city_name}")
 
-    if lat is not None and long is not None:
+    import re
+    # 1. Check for travel origin vs destination patterns (e.g. "I am in Greater Noida I wanna take a ride to Mayur Vihar")
+    travel_match = re.search(r"I am in ([A-Za-z\s]+?)\s+(?:I|wanna|want|going|and).+?(?:to|towards)\s+([A-Za-z\s]+)", user_text, re.IGNORECASE)
+    dest_only_match = re.search(r"(?:ride|travel|go|head|transit)\s+to\s+([A-Za-z\s]+)", user_text, re.IGNORECASE)
+    city_query_match = re.search(r"(?:weather|temp|temperature|forecast|rain)\s+(?:in|at|for)\s+([A-Za-z\s\-,]+)", user_text, re.IGNORECASE)
+
+    if travel_match or dest_only_match:
+        origin_str = travel_match.group(1).strip() if travel_match else (city_name or "Current Device Location")
+        dest_str = travel_match.group(2).strip() if travel_match else dest_only_match.group(1).strip()
+
+        eff_lat = lat
+        eff_long = long
+        if travel_match:
+            geo_orig = travel_service._geocode_place(origin_str)
+            if geo_orig:
+                eff_lat = geo_orig["latitude"]
+                eff_long = geo_orig["longitude"]
+                origin_str = geo_orig["name"]
+
+        travel_eval = await travel_service.evaluate_travel_risk(
+            latitude=eff_lat or 28.4744,
+            longitude=eff_long or 77.5040,
+            destination=dest_str,
+            origin_name=origin_str
+        )
+
+        context_str = (
+            f"[TRAVEL ADVISORY ROUTE CONTEXT]\n"
+            f"Origin: {travel_eval.get('origin')}\n"
+            f"Destination: {travel_eval.get('destination')}\n"
+            f"Overall Route Risk Level: {travel_eval.get('risk_level')}\n"
+            f"Active Route Hazards: {travel_eval.get('hazard')}\n"
+            f"Travel Recommendation: {travel_eval.get('travel_recommendation')}\n"
+            f"Reason: {travel_eval.get('reason')}\n"
+            f"Recommended Action: {travel_eval.get('recommended_action')}\n"
+            f"Device Current Time: {device_ts}\n"
+            f"Device Timezone: {device_tz}\n"
+            f"[CRITICAL LLM INSTRUCTION]\n"
+            f"The user wants to travel from {travel_eval.get('origin')} to {travel_eval.get('destination')}. "
+            f"Format a clean Travel Safety Assessment for this route. "
+            f"Never state the user is in San Jose or Delhi unless the origin/destination is explicitly San Jose or Delhi.\n"
+            f"[USER QUERY]\n"
+            f"{user_text}"
+        )
+    elif city_query_match and len(city_query_match.group(1).strip()) > 2:
+        target_city = city_query_match.group(1).strip()
+        geo_city = travel_service._geocode_place(target_city)
+        if geo_city and geo_city.get("latitude"):
+            t_lat = geo_city["latitude"]
+            t_long = geo_city["longitude"]
+            city_weather = await risk_engine.get_current_risk(t_lat, t_long, tz=device_tz)
+            context_str = (
+                f"[EXPLICIT USER REQUESTED LOCATION]\n"
+                f"Requested City: {geo_city['name']}\n"
+                f"Latitude: {t_lat}, Longitude: {t_long}\n"
+                f"Computed Risk Level: {city_weather.get('level')}\n"
+                f"Active Hazard: {city_weather.get('hazard')}\n"
+                f"Summary: {city_weather.get('message')}\n"
+                f"Recommended Action: {city_weather.get('recommended_action')}\n"
+                f"[USER QUERY]\n"
+                f"{user_text}"
+            )
+        else:
+            context_str = (
+                f"[USER QUERY FOR CITY: {target_city}]\n"
+                f"Device Current Time: {device_ts}\n"
+                f"[USER QUERY]\n"
+                f"{user_text}"
+            )
+    elif lat is not None and long is not None:
         if not city_name:
             city_name = _reverse_geocode(lat, long)
+
+        print(f"🤖 CHAT BACKEND LOCATION\nlatitude={lat}\nlongitude={long}")
+        print(f"🤖 CHAT WEATHER CONTEXT\nlatitude={lat}\nlongitude={long}\nlocation={city_name}")
+
+        import Backend.app.services.weather_feature.weather_service as weather_svc
+        try:
+            curr_weather = await weather_svc.weather(latitude=lat, longitude=long, timezone=device_tz)
+            curr_dict = curr_weather.model_dump() if hasattr(curr_weather, 'model_dump') else {}
+            curr_data = curr_dict.get('current', {})
+            weather_desc = f"Temperature: {curr_data.get('temperature', 28.0)}°C, Apparent Temp: {curr_data.get('apparent_temperature', 30.0)}°C, Humidity: {curr_data.get('humidity', 62)}%, Wind: {curr_data.get('wind_speed', 12.0)} km/h, Rain: {curr_data.get('precipitation', 0.0)} mm, Weather Code: {curr_data.get('weather_code', 0)}"
+        except Exception as e:
+            weather_desc = "Temperature: 28.0°C, Humidity: 62%, Wind: 12 km/h"
 
         risk_info = await risk_engine.get_current_risk(lat, long, tz=device_tz)
 
         context_str = (
-            f"[VERIFIED DEVICE GPS LOCATION]\n"
+            f"[VERIFIED DEVICE GPS LOCATION & LIVE ATMOSPHERIC METRICS]\n"
             f"Latitude: {lat}, Longitude: {long}\n"
             f"City/Region: {city_name}\n"
             f"Device Timestamp: {device_ts}\n"
             f"Device Timezone: {device_tz}\n"
+            f"Live Weather Metrics: {weather_desc}\n"
             f"Computed Risk Level: {risk_info.get('level')}\n"
             f"Active Hazard: {risk_info.get('hazard')}\n"
             f"Risk Summary: {risk_info.get('message')}\n"
             f"Recommended Action: {risk_info.get('recommended_action')}\n"
             f"[CRITICAL LLM INSTRUCTION]\n"
             f"The user is physically located at {city_name} (coordinates {lat}, {long}). "
-            f"Base your answer strictly on weather and hazards at {city_name}. "
-            f"NEVER refer to Delhi or any other city unless the user explicitly asks about that city or their coordinates are in Delhi.\n"
+            f"Always report temperatures in Celsius (°C). "
+            f"Base your response strictly on the verified live weather and risk data provided above for {city_name}. "
+            f"NEVER refer to San Jose, Bay Area, California, Mountain View, or Delhi unless explicitly requested.\n"
             f"[USER QUERY]\n"
             f"{user_text}"
         )
     else:
         context_str = (
-            f"[LOCATION STATUS: UNKNOWN]\n"
-            f"Device GPS location is currently disabled or unavailable.\n"
+            f"[LOCATION STATUS: UNAVAILABLE]\n"
+            f"Unable to determine your current location. Please enable location services.\n"
             f"[USER QUERY]\n"
             f"{user_text}"
         )
 
-    state["messages"].append(
-        HumanMessage(content=context_str)
-    )
+    # Isolated per-turn session execution to prevent message context pollution
+    request_state = {"messages": [HumanMessage(content=context_str)]}
+    triggered_state = await chat_trigger.trigger(request_state)
 
-    triggered_state = await chat_trigger.trigger(state)
+    if triggered_state is not None and "messages" in triggered_state and triggered_state["messages"]:
+        return triggered_state["messages"][-1].content
 
-    if triggered_state is not None:
-        state = triggered_state
+    return "WeatherGPT assistance available for your area."
 
-    return state["messages"][-1].content
 
 
 

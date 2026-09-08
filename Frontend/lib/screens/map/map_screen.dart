@@ -46,15 +46,24 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _initUserLocation() async {
     try {
       final loc = await _locationService.getCurrentLocation();
+      debugPrint('🗺️ MAP LOCATION\nlatitude = ${loc.latitude}\nlongitude = ${loc.longitude}');
       if (mounted) {
         setState(() {
           _currentCenter = LatLng(loc.latitude, loc.longitude);
           _cityName = loc.name;
           _locationName = '${loc.name}, ${loc.state}, ${loc.country}';
         });
-        _mapController.move(_currentCenter, _currentZoom);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            try {
+              _mapController.move(_currentCenter, _currentZoom);
+            } catch (_) {}
+          }
+        });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Map location notice: $e');
+    }
   }
 
   void _zoomIn() {
@@ -74,6 +83,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _recenterMap() async {
     try {
       final loc = await _locationService.getCurrentLocation();
+      debugPrint('🗺️ MAP LOCATION\nlatitude = ${loc.latitude}\nlongitude = ${loc.longitude}');
       if (mounted) {
         setState(() {
           _currentCenter = LatLng(loc.latitude, loc.longitude);

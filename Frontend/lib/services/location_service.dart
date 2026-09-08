@@ -121,14 +121,21 @@ class LocationService {
         ),
       );
 
+      if (_cachedLatitude != position.latitude || _cachedLongitude != position.longitude) {
+        _cachedCity = null;
+        _cachedState = null;
+        _cachedCountry = null;
+      }
+
       _cachedLatitude = position.latitude;
       _cachedLongitude = position.longitude;
 
+      debugPrint('📍 [LOCATION SOURCE]\nlatitude = ${position.latitude}\nlongitude = ${position.longitude}\ntimestamp = ${DateTime.now().toIso8601String()}\nsource = DEVICE_GPS');
       debugPrint('📍 DEVICE GPS\nlatitude = ${position.latitude}\nlongitude = ${position.longitude}');
 
       return (latitude: position.latitude, longitude: position.longitude);
     } catch (e) {
-      throw LocationFetchException('Unable to determine your current location. Please enable location services.');
+      throw const LocationFetchException('Unable to determine your current location. Please enable location services.');
     }
   }
 
@@ -193,8 +200,6 @@ class LocationService {
       debugPrint('📤 UPDATE LOCATION\nlatitude = ${coords.latitude}\nlongitude = ${coords.longitude}\ntimestamp = ${now.toIso8601String()}');
 
       await _apiService.post('/update-location', {
-        'lat': coords.latitude,
-        'long': coords.longitude,
         'latitude': coords.latitude,
         'longitude': coords.longitude,
         'city': _cachedCity,

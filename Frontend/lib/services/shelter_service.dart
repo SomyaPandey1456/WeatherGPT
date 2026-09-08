@@ -57,8 +57,8 @@ class ShelterService {
     if (!ApiConfig.useMockData) {
       try {
         final res = await _apiService.get('/nearby-shelters', queryParams: {
-          'lat': latitude.toString(),
-          'long': longitude.toString(),
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
         });
         if (res is Map<String, dynamic> && res.containsKey('shelters')) {
           final list = res['shelters'] as List;

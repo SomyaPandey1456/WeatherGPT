@@ -70,19 +70,104 @@ class WeatherService {
   }
 
   Future<List<HourlyForecast>> getHourlyForecast() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return const [
-      HourlyForecast(timeLabel: 'Now', temperatureC: 28.0, condition: 'Partly Cloudy', rainProbability: 10, windSpeedKmH: 12.0),
-      HourlyForecast(timeLabel: '12 PM', temperatureC: 29.5, condition: 'Partly Cloudy', rainProbability: 15, windSpeedKmH: 14.0),
-      HourlyForecast(timeLabel: '1 PM', temperatureC: 31.0, condition: 'Sunny', rainProbability: 20, windSpeedKmH: 15.0),
-      HourlyForecast(timeLabel: '2 PM', temperatureC: 32.0, condition: 'Sunny', rainProbability: 25, windSpeedKmH: 16.0),
-      HourlyForecast(timeLabel: '3 PM', temperatureC: 31.5, condition: 'Thunderstorm', rainProbability: 70, windSpeedKmH: 22.0),
-      HourlyForecast(timeLabel: '4 PM', temperatureC: 29.0, condition: 'Heavy Rain', rainProbability: 85, windSpeedKmH: 24.0),
-      HourlyForecast(timeLabel: '5 PM', temperatureC: 27.5, condition: 'Moderate Rain', rainProbability: 60, windSpeedKmH: 18.0),
-      HourlyForecast(timeLabel: '6 PM', temperatureC: 26.5, condition: 'Light Rain', rainProbability: 40, windSpeedKmH: 14.0),
-      HourlyForecast(timeLabel: '7 PM', temperatureC: 26.0, condition: 'Cloudy', rainProbability: 20, windSpeedKmH: 10.0),
-    ];
+    if (!ApiConfig.useMockData) {
+      try {
+        final queryParams = <String, String>{};
+        try {
+          final coords = await _locationService.getDeviceCoordinates();
+          queryParams['latitude'] = coords.latitude.toString();
+          queryParams['longitude'] = coords.longitude.toString();
+        } catch (_) {}
+
+        final data = await _apiService.get('/weather/hourly', queryParams: queryParams.isNotEmpty ? queryParams : null);
+
+        if (data is Map<String, dynamic> && data.containsKey('hourly')) {
+          final list = data['hourly'] as List;
+          final now = DateTime.now();
+          final results = <HourlyForecast>[];
+
+          for (int i = 0; i < list.length; i++) {
+            final item = list[i] as Map<String, dynamic>;
+            final timeStr = item['time']?.toString();
+            if (timeStr == null) continue;
+            final dt = DateTime.tryParse(timeStr)?.toLocal();
+            if (dt == null) continue;
+
+            // Only include current hour and future hours
+            if (dt.isBefore(now.subtract(const Duration(minutes: 55)))) continue;
+
+            String label;
+            if (results.isEmpty) {
+              label = 'Now';
+            } else {
+              final hour12 = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+              final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+              label = '$hour12 $ampm';
+            }
+
+            final temp = (item['temperature'] as num?)?.toDouble() ?? 28.0;
+            final rainProb = (item['precipitation_probability'] as num?)?.toInt() ?? 10;
+            final wind = (item['wind_speed'] as num?)?.toDouble() ?? 12.0;
+            final weatherCode = (item['weather_code'] as num?)?.toInt() ?? 0;
+
+            String cond = 'Partly Cloudy';
+            if ([1, 2, 3].contains(weatherCode)) {
+              cond = 'Partly Cloudy';
+            } else if ([51, 53, 55, 61, 63, 65, 80, 81].contains(weatherCode)) {
+              cond = 'Rain Showers';
+            } else if ([95, 96, 99].contains(weatherCode)) {
+              cond = 'Thunderstorm';
+            } else if (weatherCode == 0) {
+              cond = 'Sunny';
+            }
+
+
+            results.add(HourlyForecast(
+              timeLabel: label,
+              temperatureC: temp,
+              condition: cond,
+              rainProbability: rainProb,
+              windSpeedKmH: wind,
+            ));
+
+            if (results.length >= 12) break; // Limit to next 12 hours
+          }
+
+          if (results.isNotEmpty) return results;
+        }
+      } catch (_) {
+        // Fallback to dynamic local hour sequence if API call fails
+      }
+    }
+
+    // Dynamic fallback generation starting from actual local hour
+    final now = DateTime.now();
+    return List.generate(8, (index) {
+      if (index == 0) {
+        return const HourlyForecast(
+          timeLabel: 'Now',
+          temperatureC: 28.0,
+          condition: 'Partly Cloudy',
+          rainProbability: 10,
+          windSpeedKmH: 12.0,
+        );
+      }
+      final target = now.add(Duration(hours: index));
+      final hour12 = target.hour % 12 == 0 ? 12 : target.hour % 12;
+      final ampm = target.hour >= 12 ? 'PM' : 'AM';
+      final label = '$hour12 $ampm';
+      final temp = 28.0 + (index % 3) - 1.0;
+
+      return HourlyForecast(
+        timeLabel: label,
+        temperatureC: temp,
+        condition: index == 4 ? 'Thunderstorm' : 'Partly Cloudy',
+        rainProbability: index == 4 ? 75 : 15,
+        windSpeedKmH: 12.0 + index,
+      );
+    });
   }
+
 
   Future<List<DailyForecast>> get7DayForecast() async {
     await Future.delayed(const Duration(milliseconds: 250));

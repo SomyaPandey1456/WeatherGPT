@@ -77,8 +77,8 @@ class RiskService {
       final res = await _apiService.get(
         '/current-risk',
         queryParams: {
-          'lat': latitude.toString(),
-          'long': longitude.toString(),
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
         },
       );
       if (res is Map<String, dynamic>) {
@@ -108,8 +108,8 @@ class RiskService {
     }
     try {
       final res = await _apiService.post('/travel-risk', {
-        'lat': latitude,
-        'long': longitude,
+        'latitude': latitude,
+        'longitude': longitude,
         'destination': destination,
       });
       if (res is Map<String, dynamic>) {
