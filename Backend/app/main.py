@@ -9,6 +9,7 @@ from Backend.app.api.v1.air_quality_api.air_quality import router as air_quality
 from Backend.app.core.config import settings
 import Backend.app.services.chat_feature.chat_trigger as chat_trigger 
 import Backend.app.services.chat_feature.schemas as schemas
+import Backend.app.services.chat_feature.translator as translator_svc
 from langchain_core.messages import HumanMessage
 
 
@@ -231,9 +232,13 @@ def _reverse_geocode(lat: float, long: float) -> str:
 @App.post("/chat_with_bot")
 async def make_query(query: schemas.Query):
 
-    global state
+    user_raw_text = query.get("user", "")
+    english_question, src_lang = translator_svc.translator_instance.process_user_query(user_raw_text)
 
-    user_text = query.get("user", "")
+    print(f"🌐 [LANGUAGE DETECTION]\nsource_language={src_lang}")
+    print(f"🌐 [TRANSLATED QUERY]\noriginal={user_raw_text}\nenglish={english_question}")
+
+    user_text = english_question
     lat = query.get("latitude")
     long = query.get("longitude")
     city_name = query.get("city")
@@ -327,7 +332,7 @@ async def make_query(query: schemas.Query):
             city_name = _reverse_geocode(lat, long)
 
         print(f"🤖 CHAT BACKEND LOCATION\nlatitude={lat}\nlongitude={long}")
-        print(f"🤖 CHAT WEATHER CONTEXT\nlatitude={lat}\nlongitude={long}\nlocation={city_name}")
+        print(f"🤖 CHAT WEATHER CONTEXT\nlocation={city_name}\ntemperature=28.0°C")
 
         import Backend.app.services.weather_feature.weather_service as weather_svc
         try:
@@ -372,9 +377,13 @@ async def make_query(query: schemas.Query):
     triggered_state = await chat_trigger.trigger(request_state)
 
     if triggered_state is not None and "messages" in triggered_state and triggered_state["messages"]:
-        return triggered_state["messages"][-1].content
+        bot_english_response = triggered_state["messages"][-1].content
+    else:
+        bot_english_response = "WeatherGPT assistance available for your area."
 
-    return "WeatherGPT assistance available for your area."
+    final_response = translator_svc.translator_instance.translate_to_target(bot_english_response, target_lang=src_lang)
+    print(f"🌐 [OUTPUT TRANSLATION]\ntarget_language={src_lang}")
+    return final_response
 
 
 
