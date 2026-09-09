@@ -22,3 +22,12 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# test files 
+test_rainfall.py
+test_risk.py
+test_weather_risk.py
+
+# feature files
+weather_risk_service.py
+rainfall_service.py

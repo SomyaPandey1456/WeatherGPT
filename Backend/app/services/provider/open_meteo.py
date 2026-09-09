@@ -114,7 +114,38 @@ async def get_hourly_forecast(
         response.raise_for_status()
 
         return response.json()
-    
+
+# Past + future hourly weather
+async def get_hourly_weather_with_history(
+    latitude: float,
+    longitude: float,
+    timezone: str = "auto",
+):
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": ",".join(
+            [
+                "precipitation",
+                "precipitation_probability",
+                "weather_code",
+            ]
+        ),
+        "timezone": timezone,
+        "past_hours": 24,
+        "forecast_hours": 48,
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            WEATHER_BASE_URL,
+            params=params,
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
  
 # Air quality
 async def get_air_quality(

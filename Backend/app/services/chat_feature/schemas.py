@@ -6,4 +6,6 @@ class ChatState(TypedDict):
     messages : Annotated[list[BaseMessage], add_messages]
 
 class Query(TypedDict):
-    user : str
+    user: str
+    latitude: float
+    longitude: float
